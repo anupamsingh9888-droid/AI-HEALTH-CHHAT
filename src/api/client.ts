@@ -265,18 +265,33 @@ class ApiClient {
         body: JSON.stringify({ message, include_health_context: includeHealthContext }),
       });
     },
+    tts: async (text: string): Promise<{ audio_base64: string; mime_type: string }> => {
+      return this.request<{ audio_base64: string; mime_type: string }>("/tts", {
+        method: "POST",
+        body: JSON.stringify({ text }),
+      });
+    },
     clear: async (): Promise<void> => {
       await this.request("/chat/history", { method: "DELETE" });
     },
   };
 
-  // --- Health Analytics ---
+  // --- Health Analytics & Biometric Context ---
   health = {
     summary: async (): Promise<HealthSummary> => {
       return this.request<HealthSummary>("/health/summary");
     },
     insights: async (): Promise<HealthInsightsResponse> => {
       return this.request<HealthInsightsResponse>("/health/insights");
+    },
+    getMetrics: async (): Promise<any> => {
+      return this.request<any>("/health/metrics");
+    },
+    updateMetrics: async (data: any): Promise<any> => {
+      return this.request<any>("/health/metrics", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
     },
     recommendations: async (focusAreas?: string[]): Promise<any> => {
       return this.request("/health/recommendations", {
