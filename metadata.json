@@ -1,0 +1,8 @@
+{
+  "name": "AI Health Copilot",
+  "description": "An AI-powered health companion to track wellness, gain personalized insights, and build healthier habits.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

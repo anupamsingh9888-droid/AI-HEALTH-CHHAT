@@ -1,0 +1,10 @@
+{
+  "description": "This AI-powered health companion helps users track their wellness, gain personalized insights, and build healthier habits through an intuitive dashboard.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

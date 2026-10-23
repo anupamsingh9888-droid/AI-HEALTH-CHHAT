@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Caveat:wght@500;600&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-hand: 'Caveat', cursive;
+  --color-navy: #17365d;
+  --color-sky: #eaf5ff;
+  --color-powder: #cfe8ff;
+  --color-lav: #eae4ff;
+  --color-mint: #ddf7ed;
+  --color-ivory: #fffcf7;
+  --color-ink-soft: #5b7391;
+  --color-turq: #2bb5a6;
+  --color-accent: #4f8fe0;
+  --color-violet: #8a7bdc;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-navy);
+    background: var(--color-ivory);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--color-powder);
+  }
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+  button {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .grad {
+    background: linear-gradient(120deg, #5fa3ec 0%, #8a7bdc 100%);
+  }
+  .glass {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+  }
+  .shadow-soft {
+    box-shadow: 0 10px 40px -12px rgba(23, 54, 93, 0.16);
+  }
+  .fade-in {
+    animation: fadein 0.45s ease both;
+  }
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes float {
+  50% {
+    transform: translateY(-8px);
+  }
+}
