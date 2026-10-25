@@ -1,17 +1,9 @@
 import { ReactNode } from "react";
 import { Bell, FileText, Home, LineChart, MessageCircleHeart, Palette, Settings, UserRound, LogOut } from "lucide-react";
 import { Logo } from "./ui";
+import { useLanguage } from "../context/LanguageContext";
 
 export type View = "home" | "profile" | "chat" | "insights" | "reports" | "settings" | "system";
-
-export const NAV: { id: View; label: string; icon: any }[] = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "profile", label: "Health Profile", icon: UserRound },
-  { id: "chat", label: "AI Health Chat", icon: MessageCircleHeart },
-  { id: "insights", label: "Health Insights", icon: LineChart },
-  { id: "reports", label: "Medical Reports", icon: FileText },
-  { id: "settings", label: "Settings", icon: Settings },
-];
 
 export function Avatar({ size = 44 }: { size?: number }) {
   return (
@@ -21,16 +13,58 @@ export function Avatar({ size = 44 }: { size?: number }) {
   );
 }
 
+export function LanguageToggle() {
+  const { lang, setLang } = useLanguage();
+  return (
+    <div className="flex items-center rounded-xl bg-sky/80 p-0.5 text-xs font-bold text-navy shadow-xs ring-1 ring-powder/80">
+      <button
+        type="button"
+        onClick={() => setLang("en")}
+        aria-label="Switch to English"
+        className={`rounded-lg px-2.5 py-1 transition ${
+          lang === "en" ? "bg-white text-navy shadow-xs" : "text-ink-soft hover:text-navy"
+        }`}
+      >
+        EN
+      </button>
+      <button
+        type="button"
+        onClick={() => setLang("hi")}
+        aria-label="हिन्दी में बदलें"
+        className={`rounded-lg px-2.5 py-1 transition ${
+          lang === "hi" ? "bg-white text-navy shadow-xs font-bold" : "text-ink-soft hover:text-navy"
+        }`}
+      >
+        हिन्दी
+      </button>
+    </div>
+  );
+}
+
 export default function Shell({ view, setView, onLogout, children }: { view: View; setView: (v: View) => void; onLogout: () => void; children: ReactNode }) {
+  const { t } = useLanguage();
+
+  const NAV: { id: View; label: string; icon: any }[] = [
+    { id: "home", label: t("nav.home"), icon: Home },
+    { id: "profile", label: t("nav.profile"), icon: UserRound },
+    { id: "chat", label: t("nav.chat"), icon: MessageCircleHeart },
+    { id: "insights", label: t("nav.insights"), icon: LineChart },
+    { id: "reports", label: t("nav.reports"), icon: FileText },
+    { id: "settings", label: t("nav.settings"), icon: Settings },
+  ];
+
   return (
     <div className="min-h-screen bg-ivory lg:pl-72">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-powder/60 bg-white/80 p-6 backdrop-blur lg:flex">
-        <div className="mb-8 flex items-center gap-3">
-          <Logo />
-          <div className="leading-tight">
-            <p className="font-extrabold">AI Health</p>
-            <p className="text-xs font-bold tracking-widest text-ink-soft">COPILOT</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Logo />
+            <div className="leading-tight">
+              <p className="font-extrabold">{t("shell.app_title").split(" ")[0]} {t("shell.app_title").split(" ")[1]}</p>
+              <p className="text-xs font-bold tracking-widest text-ink-soft">{t("shell.copilot")}</p>
+            </div>
           </div>
+          <LanguageToggle />
         </div>
         <nav className="flex flex-col gap-1.5" aria-label="Main">
           {NAV.map((n) => {
@@ -43,7 +77,7 @@ export default function Shell({ view, setView, onLogout, children }: { view: Vie
             );
           })}
           <button onClick={() => setView("system")} className={`mt-4 flex h-10 items-center gap-3 rounded-2xl px-4 text-xs font-bold ${view === "system" ? "bg-lav text-navy" : "text-ink-soft hover:bg-sky/70"}`}>
-            <Palette size={16} /> Design System
+            <Palette size={16} /> {t("nav.system")}
           </button>
         </nav>
         <div className="mt-auto rounded-2xl bg-linear-to-br from-sky to-mint p-3">
@@ -53,14 +87,17 @@ export default function Shell({ view, setView, onLogout, children }: { view: Vie
               <p className="truncate text-sm font-extrabold">Maya Rao</p>
               <p className="truncate text-xs text-ink-soft">maya@example.com</p>
             </div>
-            <button onClick={onLogout} aria-label="Log out" className="grid size-9 place-items-center rounded-xl text-ink-soft hover:bg-white"><LogOut size={16} /></button>
+            <button onClick={onLogout} aria-label={t("nav.logout")} className="grid size-9 place-items-center rounded-xl text-ink-soft hover:bg-white"><LogOut size={16} /></button>
           </div>
         </div>
       </aside>
 
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-powder/60 bg-white/85 px-4 py-3 backdrop-blur lg:hidden">
-        <div className="flex items-center gap-2"><Logo size={32} /><span className="font-extrabold">AI Health Copilot</span></div>
-        <button aria-label="Notifications" className="relative grid size-11 place-items-center rounded-2xl bg-sky"><Bell size={18} /><span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-violet" /></button>
+        <div className="flex items-center gap-2"><Logo size={32} /><span className="font-extrabold">{t("shell.app_title")}</span></div>
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <button aria-label="Notifications" className="relative grid size-10 place-items-center rounded-2xl bg-sky"><Bell size={18} /><span className="absolute right-2 top-2 size-2 rounded-full bg-violet" /></button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-8 lg:px-10 lg:pb-12 lg:pt-10">
@@ -74,7 +111,7 @@ export default function Shell({ view, setView, onLogout, children }: { view: Vie
             <n.icon size={21} />
           </button>
         ))}
-        <button onClick={() => setView("settings")} aria-label="Settings" className={`grid h-12 flex-1 place-items-center rounded-2xl ${view === "settings" ? "bg-lav text-accent" : "text-ink-soft"}`}><Settings size={21} /></button>
+        <button onClick={() => setView("settings")} aria-label={t("nav.settings")} className={`grid h-12 flex-1 place-items-center rounded-2xl ${view === "settings" ? "bg-lav text-accent" : "text-ink-soft"}`}><Settings size={21} /></button>
       </nav>
     </div>
   );

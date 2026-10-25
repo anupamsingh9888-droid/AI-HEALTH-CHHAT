@@ -16,10 +16,13 @@ import {
   ChevronUp,
   AlertCircle,
   RotateCcw,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { PageHeader } from "./ui";
 import { Avatar } from "./Shell";
 import { api, ChatMessage } from "../api/client";
+import { useLanguage } from "../context/LanguageContext";
 
 interface FormattedMsg {
   id: string;
@@ -29,7 +32,7 @@ interface FormattedMsg {
   error?: boolean;
 }
 
-const defaultSuggestions = [
+const defaultSuggestionsEn = [
   "Is my activity level healthy?",
   "How can I improve my sleep?",
   "Is 6.5 hours enough sleep?",
@@ -37,15 +40,33 @@ const defaultSuggestions = [
   "What are some good exercises for beginners?",
 ];
 
+const defaultSuggestionsHi = [
+  "क्या मेरी शारीरिक गतिविधि पर्याप्त है?",
+  "मैं अपनी नींद कैसे बेहतर कर सकता हूँ?",
+  "क्या 6.5 घंटे की नींद काफी है?",
+  "शाम को विश्राम की अच्छी दिनचर्या क्या है?",
+  "शुरुआती लोगों के लिए अच्छे व्यायाम कौन से हैं?",
+];
+
 export default function Chat() {
+  const { lang, speechLocale, t } = useLanguage();
   const [msgs, setMsgs] = useState<FormattedMsg[]>([]);
-  const [activeSuggestions, setActiveSuggestions] = useState<string[]>(defaultSuggestions);
+  const [activeSuggestions, setActiveSuggestions] = useState<string[]>(
+    lang === "hi" ? defaultSuggestionsHi : defaultSuggestionsEn
+  );
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioLoadingId, setAudioLoadingId] = useState<string | null>(null);
   const [showHealthContext, setShowHealthContext] = useState(false);
+
+  // Speech-to-Text State
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const speechBaseTextRef = useRef<string>("");
+
   const [metrics, setMetrics] = useState({
     sleep_avg_hours: 6.7,
     sleep_goal_hours: 8.0,
@@ -60,6 +81,109 @@ export default function Chat() {
 
   const end = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Sync suggestion language on language switch if no custom suggestions exist
+  useEffect(() => {
+    setActiveSuggestions((prev) => {
+      const isDefault =
+        prev === defaultSuggestionsEn ||
+        prev === defaultSuggestionsHi ||
+        defaultSuggestionsEn.includes(prev[0]) ||
+        defaultSuggestionsHi.includes(prev[0]);
+      if (isDefault) {
+        return lang === "hi" ? defaultSuggestionsHi : defaultSuggestionsEn;
+      }
+      return prev;
+    });
+  }, [lang]);
+
+  // Clean up speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // Ignore
+        }
+      }
+    };
+  }, []);
+
+  // Web Speech API: Toggle Listening (English & Hindi)
+  const toggleListening = () => {
+    setSpeechError(null);
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // Ignore
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setSpeechError(t("chat.speech_unsupported"));
+      setTimeout(() => setSpeechError(null), 5000);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = speechLocale;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      speechBaseTextRef.current = text.trim() ? text.trim() + " " : "";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSpeechError(null);
+      };
+
+      recognition.onresult = (event: any) => {
+        let currentTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript;
+        }
+        if (currentTranscript) {
+          const combined = (speechBaseTextRef.current + currentTranscript).trim();
+          setText(combined);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("[SpeechRecognition Error]:", event.error);
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          setSpeechError(t("chat.speech_denied"));
+        } else if (event.error !== "no-speech") {
+          setSpeechError(t("chat.speech_error"));
+        }
+        setIsListening(false);
+        setTimeout(() => setSpeechError(null), 5000);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err: any) {
+      console.warn("[SpeechRecognition init failed]:", err.message);
+      setSpeechError(t("chat.speech_error"));
+      setIsListening(false);
+      setTimeout(() => setSpeechError(null), 5000);
+    }
+  };
 
   // Auto-scroll on new message
   useEffect(() => {
@@ -186,10 +310,13 @@ export default function Chat() {
       {
         id: `welcome-${Date.now()}`,
         from: "ai",
-        text: "Conversation cleared. What would you like to ask or explore?",
+        text:
+          lang === "hi"
+            ? "बातचीत साफ हो गई है। आप क्या पूछना या जानना चाहेंगे?"
+            : "Conversation cleared. What would you like to ask or explore?",
       },
     ]);
-    setActiveSuggestions(defaultSuggestions);
+    setActiveSuggestions(lang === "hi" ? defaultSuggestionsHi : defaultSuggestionsEn);
   };
 
   const copyToClipboard = (id: string, content: string) => {
@@ -320,8 +447,8 @@ export default function Chat() {
   return (
     <>
       <PageHeader
-        title="Maya — AI Health Companion"
-        sub="Contextual, evidence-based wellness guidance powered by Gemini."
+        title={lang === "hi" ? "माया — एआई स्वास्थ्य साथी" : "Maya — AI Health Companion"}
+        sub={t("chat.sub")}
         right={
           <div className="flex items-center gap-2">
             <button
@@ -329,16 +456,16 @@ export default function Chat() {
               className="flex h-10 items-center gap-2 rounded-2xl border border-powder bg-white px-3.5 text-xs font-bold text-ink-soft hover:text-navy"
             >
               <Activity size={14} className="text-turq" />
-              <span>Personal Context</span>
+              <span>{t("chat.health_context")}</span>
               {showHealthContext ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
             <button
               onClick={handleClearHistory}
               className="flex h-10 items-center gap-2 rounded-2xl border border-powder bg-white px-3.5 text-xs font-bold text-ink-soft hover:text-navy"
-              title="Clear conversation history"
+              title={t("chat.clear")}
             >
               <RefreshCw size={14} />
-              <span className="hidden sm:inline">Clear Chat</span>
+              <span className="hidden sm:inline">{t("chat.clear")}</span>
             </button>
           </div>
         }
@@ -583,6 +710,45 @@ export default function Chat() {
             ))}
           </div>
 
+          {/* Speech Recognition Error Banner */}
+          {speechError && (
+            <div className="mb-2 flex items-center justify-between rounded-2xl bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-200 fade-in">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={15} className="shrink-0 text-amber-600" />
+                <span>{speechError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSpeechError(null)}
+                className="text-amber-700 hover:text-amber-900 font-bold ml-2 text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Active Listening Indicator */}
+          {isListening && (
+            <div className="mb-2 flex items-center justify-between rounded-2xl bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 ring-1 ring-rose-200 fade-in">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex size-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex size-2.5 rounded-full bg-rose-500"></span>
+                </span>
+                <span>
+                  {t("chat.listening")} ({lang === "hi" ? "हिन्दी hi-IN" : "English en-IN"})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleListening}
+                className="rounded-lg bg-rose-200/70 px-2 py-0.5 text-[11px] font-extrabold text-rose-800 hover:bg-rose-300 transition"
+              >
+                {t("chat.voice_stop")}
+              </button>
+            </div>
+          )}
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -594,12 +760,38 @@ export default function Chat() {
               value={text}
               disabled={typing}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Ask about sleep, activity, evening routines, nutrition, or your data…"
+              placeholder={t("chat.placeholder")}
               className="h-10 min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-ink-soft/60 disabled:opacity-60"
             />
+
+            {/* Speech-to-Text Microphone Button */}
+            <button
+              type="button"
+              onClick={toggleListening}
+              aria-label={isListening ? t("chat.stop_listening") : t("chat.click_to_speak")}
+              title={isListening ? t("chat.stop_listening") : `${t("chat.click_to_speak")} (${lang === "hi" ? "हिन्दी" : "English"})`}
+              className={`relative grid size-11 place-items-center rounded-full transition ${
+                isListening
+                  ? "bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.6)] animate-pulse"
+                  : "text-ink-soft hover:bg-sky hover:text-navy"
+              }`}
+            >
+              {isListening ? (
+                <>
+                  <MicOff size={18} />
+                  <span className="absolute -top-1 -right-1 flex size-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex size-3 rounded-full bg-rose-500"></span>
+                  </span>
+                </>
+              ) : (
+                <Mic size={18} />
+              )}
+            </button>
+
             <button
               type="submit"
-              aria-label="Send message"
+              aria-label={t("chat.send")}
               disabled={!text.trim() || typing}
               className="grid size-11 place-items-center rounded-full grad text-white transition hover:brightness-105 disabled:opacity-40"
             >
@@ -609,7 +801,9 @@ export default function Chat() {
 
           <p className="mt-2.5 flex items-start gap-1.5 text-[11px] leading-snug text-ink-soft">
             <Info size={13} className="mt-px shrink-0 text-turq" />
-            Maya provides personalized, evidence-informed guidance. Always consult a licensed clinician for medical diagnoses or emergency symptoms.
+            {lang === "hi"
+              ? "माया व्यक्तिगत, साक्ष्य-सूचित मार्गदर्शन प्रदान करती है। चिकित्सकीय निदान या आपातकालीन लक्षणों के लिए हमेशा पंजीकृत चिकित्सक से परामर्श लें।"
+              : "Maya provides personalized, evidence-informed guidance. Always consult a licensed clinician for medical diagnoses or emergency symptoms."}
           </p>
         </div>
       </div>
